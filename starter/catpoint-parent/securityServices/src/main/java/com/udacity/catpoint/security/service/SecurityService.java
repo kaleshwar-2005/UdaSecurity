@@ -155,6 +155,10 @@ public class SecurityService {
             case PENDING_ALARM ->
                     setAlarmStatus(
                             AlarmStatus.ALARM);
+            default->{
+                break;
+            }
+
         }
     }
 
@@ -174,6 +178,9 @@ public class SecurityService {
             case ALARM ->
                     setAlarmStatus(
                             AlarmStatus.PENDING_ALARM);
+            default->{
+                break;
+            }
         }
     }
 
