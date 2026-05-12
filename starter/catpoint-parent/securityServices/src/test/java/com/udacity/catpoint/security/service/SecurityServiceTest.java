@@ -472,4 +472,24 @@ public class SecurityServiceTest {
                 .setAlarmStatus(
                         AlarmStatus.PENDING_ALARM);
     }
+
+    @Test
+void whenArmedHomeAndCatAlreadyDetected_thenAlarm() {
+
+    when(imageService.imageContainsCat(
+            any(),
+            anyFloat()))
+            .thenReturn(true);
+
+    // Detect cat while disarmed
+    securityService.processImage(null);
+
+    // Arm system
+    securityService.setArmingStatus(
+            ArmingStatus.ARMED_HOME);
+
+    verify(securityRepository)
+            .setAlarmStatus(
+                    AlarmStatus.ALARM);
+}
 }
