@@ -26,6 +26,9 @@ public class SecurityService {
     private Set<StatusListener> statusListeners =
             new HashSet<>();
 
+    // Track cat detection state
+    private boolean catDetected = false;
+
     public SecurityService(
             SecurityRepository securityRepository,
             ImageService imageService) {
@@ -43,7 +46,7 @@ public class SecurityService {
     public void setArmingStatus(
             ArmingStatus armingStatus) {
 
-        // If system disarmed -> NO_ALARM
+        // Disarmed -> NO_ALARM
         if (armingStatus ==
                 ArmingStatus.DISARMED) {
 
@@ -51,28 +54,46 @@ public class SecurityService {
                     AlarmStatus.NO_ALARM);
         }
 
-        // If system armed -> reset sensors inactive
+        // Armed -> reset all sensors inactive
         if (armingStatus ==
                 ArmingStatus.ARMED_HOME
                 ||
                 armingStatus ==
                         ArmingStatus.ARMED_AWAY) {
 
-            securityRepository
-                    .getSensors()
-                    .forEach(sensor ->
-                            sensor.setActive(false));
+            for (Sensor sensor :
+                    securityRepository
+                            .getSensors()) {
+
+                sensor.setActive(false);
+
+                securityRepository
+                        .updateSensor(sensor);
+            }
         }
 
         securityRepository
                 .setArmingStatus(
                         armingStatus);
+
+        // If cat already detected
+        // and system armed home -> ALARM
+        if (armingStatus ==
+                ArmingStatus.ARMED_HOME
+                &&
+                catDetected) {
+
+            setAlarmStatus(
+                    AlarmStatus.ALARM);
+        }
     }
 
     /**
      * Handles cat detection.
      */
     private void catDetected(Boolean cat) {
+
+        this.catDetected = cat;
 
         // Cat detected while armed home
         if (cat &&
@@ -85,11 +106,13 @@ public class SecurityService {
 
         // No cat and no active sensors
         else if (
-                securityRepository
-                        .getSensors()
-                        .stream()
-                        .noneMatch(
-                                Sensor::getActive)
+                !cat
+                        &&
+                        securityRepository
+                                .getSensors()
+                                .stream()
+                                .noneMatch(
+                                        Sensor::getActive)
         ) {
 
             setAlarmStatus(
@@ -155,10 +178,9 @@ public class SecurityService {
             case PENDING_ALARM ->
                     setAlarmStatus(
                             AlarmStatus.ALARM);
-            default->{
-                break;
-            }
 
+            default -> {
+            }
         }
     }
 
@@ -175,11 +197,11 @@ public class SecurityService {
                     setAlarmStatus(
                             AlarmStatus.NO_ALARM);
 
-            case ALARM ->
-                    setAlarmStatus(
-                            AlarmStatus.PENDING_ALARM);
-            default->{
-                break;
+            case ALARM -> {
+                // Keep alarm active
+            }
+
+            default -> {
             }
         }
     }
@@ -191,7 +213,7 @@ public class SecurityService {
             Sensor sensor,
             Boolean active) {
 
-        // Already active + pending alarm -> ALARM
+        // Already active + pending -> ALARM
         if (sensor.getActive()
                 &&
                 active
