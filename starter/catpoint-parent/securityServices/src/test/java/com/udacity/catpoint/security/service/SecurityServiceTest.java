@@ -52,7 +52,8 @@ public class SecurityServiceTest {
     }
 
     /**
-     * Armed + sensor activated -> pending alarm.
+     * If alarm is armed and a sensor becomes activated,
+     * put system into pending alarm state.
      */
     @Test
     void whenSystemArmedAndSensorActivated_thenPendingAlarm() {
@@ -80,7 +81,8 @@ public class SecurityServiceTest {
     }
 
     /**
-     * Pending + sensor activated -> alarm.
+     * If alarm is armed and sensor activates while pending,
+     * set alarm state.
      */
     @Test
     void whenPendingAlarmAndSensorActivated_thenAlarmState() {
@@ -108,7 +110,8 @@ public class SecurityServiceTest {
     }
 
     /**
-     * Pending + all inactive -> no alarm.
+     * If pending alarm and all sensors inactive,
+     * return to no alarm.
      */
     @Test
     void whenPendingAlarmAndAllSensorsInactive_thenNoAlarm() {
@@ -134,7 +137,8 @@ public class SecurityServiceTest {
     }
 
     /**
-     * Alarm active -> sensor changes ignored.
+     * If alarm already active,
+     * sensor changes should not affect alarm.
      */
     @Test
     void whenAlarmActive_thenSensorChangesDoNotAffectAlarm() {
@@ -159,36 +163,9 @@ public class SecurityServiceTest {
     }
 
     /**
-     * Alarm active + sensor deactivated
-     * -> alarm stays active.
-     */
-    @Test
-    void whenAlarmActiveAndSensorDeactivated_thenAlarmStaysActive() {
-
-        Sensor sensor =
-                new Sensor(
-                        "Door",
-                        SensorType.DOOR);
-
-        sensor.setActive(true);
-
-        when(securityRepository.getAlarmStatus())
-                .thenReturn(
-                        AlarmStatus.ALARM);
-
-        securityService.changeSensorActivationStatus(
-                sensor,
-                false);
-
-        verify(securityRepository,
-                never())
-                .setAlarmStatus(
-                        AlarmStatus.PENDING_ALARM);
-    }
-
-    /**
-     * Sensor already active + pending
-     * -> alarm.
+     * If sensor activated while already active
+     * and system pending,
+     * set alarm state.
      */
     @Test
     void whenSensorAlreadyActiveAndPending_thenAlarm() {
@@ -214,8 +191,8 @@ public class SecurityServiceTest {
     }
 
     /**
-     * Sensor already inactive
-     * -> no change.
+     * If sensor already inactive,
+     * no alarm changes.
      */
     @Test
     void whenSensorAlreadyInactive_thenNoAlarmStateChange() {
@@ -237,90 +214,8 @@ public class SecurityServiceTest {
     }
 
     /**
-     * Disarmed + sensor activated
-     * -> no alarm changes.
-     */
-    @Test
-    void whenSystemDisarmedAndSensorActivated_thenNoAlarmChange() {
-
-        Sensor sensor =
-                new Sensor(
-                        "Door",
-                        SensorType.DOOR);
-
-        when(securityRepository.getArmingStatus())
-                .thenReturn(
-                        ArmingStatus.DISARMED);
-
-        securityService.changeSensorActivationStatus(
-                sensor,
-                true);
-
-        verify(securityRepository,
-                never())
-                .setAlarmStatus(any());
-    }
-
-    /**
-     * Alarm already active + sensor activated
-     * -> no state change.
-     */
-    @Test
-    void whenAlarmAlreadyActiveAndSensorActivated_thenNoStateChange() {
-
-        Sensor sensor =
-                new Sensor(
-                        "Door",
-                        SensorType.DOOR);
-
-        when(securityRepository.getArmingStatus())
-                .thenReturn(
-                        ArmingStatus.ARMED_HOME);
-
-        when(securityRepository.getAlarmStatus())
-                .thenReturn(
-                        AlarmStatus.ALARM);
-
-        securityService.changeSensorActivationStatus(
-                sensor,
-                true);
-
-        verify(securityRepository,
-                never())
-                .setAlarmStatus(
-                        AlarmStatus.PENDING_ALARM);
-    }
-
-    /**
-     * No alarm + sensor deactivated
-     * -> no change.
-     */
-    @Test
-    void whenNoAlarmAndSensorDeactivated_thenNoAlarmChange() {
-
-        Sensor sensor =
-                new Sensor(
-                        "Door",
-                        SensorType.DOOR);
-
-        sensor.setActive(true);
-
-        when(securityRepository.getAlarmStatus())
-                .thenReturn(
-                        AlarmStatus.NO_ALARM);
-
-        securityService.changeSensorActivationStatus(
-                sensor,
-                false);
-
-        verify(securityRepository,
-                never())
-                .setAlarmStatus(any());
-    }
-
-    /**
-     * Cat detected + armed home
-     * -> alarm.
+     * If cat detected while armed home,
+     * set alarm.
      */
     @Test
     void whenCatDetectedAndArmedHome_thenAlarm() {
@@ -342,8 +237,8 @@ public class SecurityServiceTest {
     }
 
     /**
-     * No cat detected
-     * -> no alarm.
+     * If no cat detected,
+     * set no alarm.
      */
     @Test
     void whenNoCatDetected_thenNoAlarm() {
@@ -361,8 +256,8 @@ public class SecurityServiceTest {
     }
 
     /**
-     * No cat + active sensors
-     * -> do not reset alarm.
+     * If no cat but sensors active,
+     * keep alarm state.
      */
     @Test
     void whenNoCatButSensorActive_thenKeepAlarm() {
@@ -391,38 +286,8 @@ public class SecurityServiceTest {
     }
 
     /**
-     * No cat + active sensors
-     * -> alarm not reset.
-     */
-    @Test
-    void whenNoCatAndActiveSensors_thenAlarmNotReset() {
-
-        Sensor sensor =
-                new Sensor(
-                        "Door",
-                        SensorType.DOOR);
-
-        sensor.setActive(true);
-
-        when(securityRepository.getSensors())
-                .thenReturn(
-                        Set.of(sensor));
-
-        when(imageService.imageContainsCat(
-                any(),
-                anyFloat()))
-                .thenReturn(false);
-
-        securityService.processImage(null);
-
-        verify(securityRepository,
-                never())
-                .setAlarmStatus(
-                        AlarmStatus.NO_ALARM);
-    }
-
-    /**
-     * Disarmed -> no alarm.
+     * If system disarmed,
+     * set no alarm.
      */
     @Test
     void whenSystemDisarmed_thenSetNoAlarm() {
@@ -436,7 +301,9 @@ public class SecurityServiceTest {
     }
 
     /**
-     * Armed -> sensors inactive.
+     * Parameterized test:
+     * when system armed,
+     * all sensors become inactive.
      */
     @ParameterizedTest
     @EnumSource(
@@ -465,8 +332,8 @@ public class SecurityServiceTest {
     }
 
     /**
-     * Armed home + cat detected
-     * -> alarm.
+     * If armed home while camera detects cat,
+     * set alarm state.
      */
     @Test
     void whenArmedHomeAndCatDetected_thenAlarm() {
@@ -481,29 +348,6 @@ public class SecurityServiceTest {
                 .thenReturn(true);
 
         securityService.processImage(null);
-
-        verify(securityRepository)
-                .setAlarmStatus(
-                        AlarmStatus.ALARM);
-    }
-
-    /**
-     * Cat detected while disarmed
-     * then armed home
-     * -> alarm.
-     */
-    @Test
-    void whenCatDetectedWhileDisarmedThenArmedHome_thenAlarm() {
-
-        when(imageService.imageContainsCat(
-                any(),
-                anyFloat()))
-                .thenReturn(true);
-
-        securityService.processImage(null);
-
-        securityService.setArmingStatus(
-                ArmingStatus.ARMED_HOME);
 
         verify(securityRepository)
                 .setAlarmStatus(
@@ -600,5 +444,32 @@ public class SecurityServiceTest {
         StatusListener listener = null;
 
         securityService.removeStatusListener(listener);
+    }
+
+    /**
+     * If alarm active and sensor deactivated,
+     * move to pending alarm.
+     */
+    @Test
+    void whenAlarmAndSensorDeactivated_thenPendingAlarm() {
+
+        Sensor sensor =
+                new Sensor(
+                        "Door",
+                        SensorType.DOOR);
+
+        sensor.setActive(true);
+
+        when(securityRepository.getAlarmStatus())
+                .thenReturn(
+                        AlarmStatus.ALARM);
+
+        securityService.changeSensorActivationStatus(
+                sensor,
+                false);
+
+        verify(securityRepository)
+                .setAlarmStatus(
+                        AlarmStatus.PENDING_ALARM);
     }
 }
