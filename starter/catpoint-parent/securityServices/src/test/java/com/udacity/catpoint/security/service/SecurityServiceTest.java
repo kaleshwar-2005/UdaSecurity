@@ -52,8 +52,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If alarm is armed and a sensor becomes activated,
-     * put system into pending alarm state.
+     * Armed + sensor activated -> pending alarm.
      */
     @Test
     void whenSystemArmedAndSensorActivated_thenPendingAlarm() {
@@ -81,8 +80,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If alarm is armed and sensor activates while pending,
-     * set alarm state.
+     * Pending + sensor activated -> alarm.
      */
     @Test
     void whenPendingAlarmAndSensorActivated_thenAlarmState() {
@@ -110,8 +108,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If pending alarm and all sensors inactive,
-     * return to no alarm.
+     * Pending + all inactive -> no alarm.
      */
     @Test
     void whenPendingAlarmAndAllSensorsInactive_thenNoAlarm() {
@@ -137,8 +134,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If alarm already active,
-     * sensor changes should not affect alarm.
+     * Alarm active -> sensor changes ignored.
      */
     @Test
     void whenAlarmActive_thenSensorChangesDoNotAffectAlarm() {
@@ -163,9 +159,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If sensor activated while already active
-     * and system pending,
-     * set alarm state.
+     * Sensor already active + pending -> alarm.
      */
     @Test
     void whenSensorAlreadyActiveAndPending_thenAlarm() {
@@ -191,8 +185,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If sensor already inactive,
-     * no alarm changes.
+     * Sensor already inactive -> no change.
      */
     @Test
     void whenSensorAlreadyInactive_thenNoAlarmStateChange() {
@@ -214,8 +207,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If cat detected while armed home,
-     * set alarm.
+     * Cat detected + armed home -> alarm.
      */
     @Test
     void whenCatDetectedAndArmedHome_thenAlarm() {
@@ -237,8 +229,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If no cat detected,
-     * set no alarm.
+     * No cat detected -> no alarm.
      */
     @Test
     void whenNoCatDetected_thenNoAlarm() {
@@ -256,8 +247,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If no cat but sensors active,
-     * keep alarm state.
+     * No cat + active sensor -> keep alarm.
      */
     @Test
     void whenNoCatButSensorActive_thenKeepAlarm() {
@@ -286,8 +276,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If system disarmed,
-     * set no alarm.
+     * Disarmed -> no alarm.
      */
     @Test
     void whenSystemDisarmed_thenSetNoAlarm() {
@@ -301,9 +290,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * Parameterized test:
-     * when system armed,
-     * all sensors become inactive.
+     * Armed -> sensors inactive.
      */
     @ParameterizedTest
     @EnumSource(
@@ -332,8 +319,7 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If armed home while camera detects cat,
-     * set alarm state.
+     * Armed home + cat detected -> alarm.
      */
     @Test
     void whenArmedHomeAndCatDetected_thenAlarm() {
@@ -447,11 +433,11 @@ public class SecurityServiceTest {
     }
 
     /**
-     * If alarm active and sensor deactivated,
-     * move to pending alarm.
+     * Alarm active + sensor deactivated
+     * -> alarm remains active.
      */
     @Test
-    void whenAlarmAndSensorDeactivated_thenPendingAlarm() {
+    void whenAlarmAndSensorDeactivated_thenAlarmStaysActive() {
 
         Sensor sensor =
                 new Sensor(
@@ -468,7 +454,8 @@ public class SecurityServiceTest {
                 sensor,
                 false);
 
-        verify(securityRepository)
+        verify(securityRepository,
+                never())
                 .setAlarmStatus(
                         AlarmStatus.PENDING_ALARM);
     }

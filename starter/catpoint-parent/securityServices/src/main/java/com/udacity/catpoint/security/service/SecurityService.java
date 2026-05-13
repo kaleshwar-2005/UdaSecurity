@@ -1,16 +1,13 @@
 package com.udacity.catpoint.security.service;
 
 import com.udacity.catpoint.application.StatusListener;
-
 import com.udacity.catpoint.data.AlarmStatus;
 import com.udacity.catpoint.data.ArmingStatus;
 import com.udacity.catpoint.data.SecurityRepository;
 import com.udacity.catpoint.data.Sensor;
-
 import com.udacity.catpoint.image.service.ImageService;
 
 import java.awt.image.BufferedImage;
-
 import java.util.HashSet;
 import java.util.Set;
 
@@ -19,11 +16,11 @@ import java.util.Set;
  */
 public class SecurityService {
 
-    private ImageService imageService;
+    private final ImageService imageService;
 
-    private SecurityRepository securityRepository;
+    private final SecurityRepository securityRepository;
 
-    private Set<StatusListener> statusListeners =
+    private final Set<StatusListener> statusListeners =
             new HashSet<>();
 
     // Track cat detection state
@@ -46,7 +43,7 @@ public class SecurityService {
     public void setArmingStatus(
             ArmingStatus armingStatus) {
 
-        // Disarmed -> NO_ALARM
+        // DISARMED -> NO_ALARM
         if (armingStatus ==
                 ArmingStatus.DISARMED) {
 
@@ -54,30 +51,32 @@ public class SecurityService {
                     AlarmStatus.NO_ALARM);
         }
 
-        // Armed -> reset all sensors inactive
+        // IMPORTANT:
+        // Set arming status FIRST
+        securityRepository
+                .setArmingStatus(armingStatus);
+
+        // Reset all sensors when armed
         if (armingStatus ==
                 ArmingStatus.ARMED_HOME
                 ||
                 armingStatus ==
                         ArmingStatus.ARMED_AWAY) {
 
-            for (Sensor sensor :
-                    securityRepository
-                            .getSensors()) {
+            // Create copy to avoid ConcurrentModificationException
+            Set<Sensor> sensorsCopy =
+                    new HashSet<>(
+                            securityRepository.getSensors());
+
+            for (Sensor sensor : sensorsCopy) {
 
                 sensor.setActive(false);
 
-                securityRepository
-                        .updateSensor(sensor);
+                securityRepository.updateSensor(sensor);
             }
         }
 
-        securityRepository
-                .setArmingStatus(
-                        armingStatus);
-
-        // If cat already detected
-        // and system armed home -> ALARM
+        // Cat already detected + armed-home -> ALARM
         if (armingStatus ==
                 ArmingStatus.ARMED_HOME
                 &&
@@ -95,7 +94,7 @@ public class SecurityService {
 
         this.catDetected = cat;
 
-        // Cat detected while armed home
+        // Cat detected while armed-home
         if (cat &&
                 getArmingStatus()
                         == ArmingStatus.ARMED_HOME) {
@@ -104,19 +103,21 @@ public class SecurityService {
                     AlarmStatus.ALARM);
         }
 
-        // No cat and no active sensors
-        else if (
-                !cat
-                        &&
-                        securityRepository
-                                .getSensors()
-                                .stream()
-                                .noneMatch(
-                                        Sensor::getActive)
-        ) {
+        // No cat detected
+        else if (!cat) {
 
-            setAlarmStatus(
-                    AlarmStatus.NO_ALARM);
+            // Only reset if NO active sensors
+            boolean activeSensorsExist =
+                    securityRepository
+                            .getSensors()
+                            .stream()
+                            .anyMatch(Sensor::getActive);
+
+            if (!activeSensorsExist) {
+
+                setAlarmStatus(
+                        AlarmStatus.NO_ALARM);
+            }
         }
 
         statusListeners.forEach(
@@ -179,6 +180,10 @@ public class SecurityService {
                     setAlarmStatus(
                             AlarmStatus.ALARM);
 
+            case ALARM -> {
+                // Keep ALARM state
+            }
+
             default -> {
             }
         }
@@ -193,12 +198,23 @@ public class SecurityService {
                 securityRepository
                         .getAlarmStatus()) {
 
-            case PENDING_ALARM ->
+            case PENDING_ALARM -> {
+
+                boolean activeSensorsExist =
+                        securityRepository
+                                .getSensors()
+                                .stream()
+                                .anyMatch(Sensor::getActive);
+
+                if (!activeSensorsExist) {
+
                     setAlarmStatus(
                             AlarmStatus.NO_ALARM);
+                }
+            }
 
             case ALARM -> {
-                // Keep alarm active
+                // ALARM must remain ALARM
             }
 
             default -> {
@@ -213,6 +229,18 @@ public class SecurityService {
             Sensor sensor,
             Boolean active) {
 
+        // If alarm already active
+        // sensor changes should not affect alarm
+        if (getAlarmStatus()
+                == AlarmStatus.ALARM) {
+
+            sensor.setActive(active);
+
+            securityRepository.updateSensor(sensor);
+
+            return;
+        }
+
         // Already active + pending -> ALARM
         if (sensor.getActive()
                 &&
@@ -226,23 +254,28 @@ public class SecurityService {
         }
 
         // Newly activated sensor
-        else if (
-                !sensor.getActive()
-                        &&
-                        active) {
+        else if (!sensor.getActive()
+                &&
+                active) {
 
             handleSensorActivated();
         }
 
         // Deactivated sensor
-        else if (
-                sensor.getActive()
-                        &&
-                        !active) {
+        else if (sensor.getActive()
+                &&
+                !active) {
+
+            sensor.setActive(false);
+
+            securityRepository.updateSensor(sensor);
 
             handleSensorDeactivated();
+
+            return;
         }
 
+        // Already inactive -> no change
         sensor.setActive(active);
 
         securityRepository
