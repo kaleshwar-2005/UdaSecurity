@@ -52,7 +52,7 @@ public class SecurityService {
         }
 
         // IMPORTANT:
-        // Set arming status FIRST
+        // Save arming status FIRST
         securityRepository
                 .setArmingStatus(armingStatus);
 
@@ -74,6 +74,11 @@ public class SecurityService {
 
                 securityRepository.updateSensor(sensor);
             }
+
+            // IMPORTANT:
+            // Notify listeners to refresh UI
+            statusListeners.forEach(
+                    StatusListener::sensorStatusChanged);
         }
 
         // Cat already detected + armed-home -> ALARM

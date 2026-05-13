@@ -459,4 +459,39 @@ public class SecurityServiceTest {
                 .setAlarmStatus(
                         AlarmStatus.PENDING_ALARM);
     }
+
+    @Test
+    void whenSystemArmed_thenAllSensorsResetInactive() {
+
+        Sensor sensor1 =
+                new Sensor(
+                        "Door",
+                        SensorType.DOOR);
+
+        Sensor sensor2 =
+                new Sensor(
+                        "Window",
+                        SensorType.WINDOW);
+
+        sensor1.setActive(true);
+        sensor2.setActive(true);
+
+        Set<Sensor> sensors =
+                Set.of(sensor1, sensor2);
+
+        when(securityRepository.getSensors())
+                .thenReturn(sensors);
+
+        securityService.setArmingStatus(
+                ArmingStatus.ARMED_HOME);
+
+        assertFalse(sensor1.getActive());
+        assertFalse(sensor2.getActive());
+
+        verify(securityRepository)
+                .updateSensor(sensor1);
+
+        verify(securityRepository)
+                .updateSensor(sensor2);
+    }
 }
